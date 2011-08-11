@@ -29,6 +29,8 @@ MAX_LENGTH = 300
 # Postgres database.
 MAX_INT = 10000
 
+STRING_OPTIONS = string.letters + string.digits
+
 def gen_file_field():
     file_path = abspath(join(dirname(__file__),'mock_file.txt'))
     fixture_txt_file = File(open(file_path))
@@ -71,13 +73,12 @@ gen_datetime = datetime.datetime.now
 
 
 def gen_string(max_length):
-    return ''.join(choice(string.printable) for i in range(max_length))
+    return ''.join(choice(STRING_OPTIONS) for i in range(max_length))
 gen_string.required = ['max_length']
 
 
 def gen_slug(max_length=50):
-    valid_chars = string.letters + string.digits + '_-'
-    return ''.join(choice(valid_chars) for i in range(max_length))
+    return ''.join(choice(STRING_OPTIONS) for i in range(max_length))
 
 
 def gen_text():
