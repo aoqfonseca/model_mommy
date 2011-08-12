@@ -29,7 +29,7 @@ MAX_LENGTH = 300
 # Postgres database.
 MAX_INT = 10000
 
-STRING_OPTIONS = string.letters + string.digits
+STRING_OPTIONS = string.letters + string.digits + "_-"
 
 def gen_file_field():
     file_path = abspath(join(dirname(__file__),'mock_file.txt'))
