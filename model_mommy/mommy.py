@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.db.models.fields import AutoField, CharField, TextField, SlugField
-from django.db.models.fields import DateField, DateTimeField, EmailField
+from django.db.models.fields import DateField, DateTimeField, TimeField, EmailField
 from django.db.models.fields import IntegerField, SmallIntegerField
 from django.db.models.fields import PositiveSmallIntegerField
 from django.db.models.fields import PositiveIntegerField
@@ -26,6 +26,7 @@ import generators
 foreign_key_required = [lambda field: ('model', field.related.parent_model)]
 
 MAX_SELF_REFERENCE_LOOPS = 2
+MAX_MANY_QUANTITY = 5
 
 def make_one(model, **attrs):
     """
@@ -48,9 +49,10 @@ def prepare_one(model, **attrs):
     return mommy.prepare(**attrs)
 
 
-def make_many(model, qty=5, **attrs):
+def make_many(model, quantity=None, **attrs):
+    quantity = quantity or MAX_MANY_QUANTITY
     mommy = Mommy(model)
-    return [mommy.make_one(**attrs) for i in range(qty)]
+    return [mommy.make_one(**attrs) for i in range(quantity)]
 
 make_one.required = foreign_key_required
 prepare_one.required = foreign_key_required
@@ -78,6 +80,7 @@ default_mapping = {
 
     DateField: generators.gen_date,
     DateTimeField: generators.gen_datetime,
+    TimeField: generators.gen_time,
 
     URLField: generators.gen_url,
     EmailField: generators.gen_email,

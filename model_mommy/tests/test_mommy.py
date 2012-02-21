@@ -31,7 +31,7 @@ class MommyCreatesSimpleModel(TestCase):
         self.assertEqual(person.id, None)
 
     def test_make_many(self):
-        people = mommy.make_many(Person, qty=5)
+        people = mommy.make_many(Person, quantity=5)
         self.assertEqual(Person.objects.count(), 5)
 
         people = mommy.make_many(Person, name="George Washington")
@@ -72,6 +72,14 @@ class MommyCreatesAssociatedModels(TestCase):
         store = mommy.make_one(Store)
         self.assertEqual(store.employees.count(), 5)
         self.assertEqual(store.customers.count(), 5)
+
+    def test_create_many_to_many_with_set_default_quantity(self):
+
+        mommy.MAX_MANY_QUANTITY = 2
+
+        store = mommy.make_one(Store)
+        self.assertEqual(store.employees.count(), 2)
+        self.assertEqual(store.customers.count(), 2)
 
     def test_simple_creating_person_with_parameters(self):
         kid = mommy.make_one(Person, happy=True, age=10, name='Mike')
@@ -133,6 +141,7 @@ class SkipDefaultsTestCase(TestCase):
         self.assertEqual(dummy.default_float_field, 123.0)
         self.assertEqual(dummy.default_date_field, '2011-01-01')
         self.assertEqual(dummy.default_date_time_field, '2011-01-01')
+        self.assertEqual(dummy.default_time_field, '00:00:00')
         self.assertEqual(dummy.default_decimal_field, Decimal('0'))
         self.assertEqual(dummy.default_email_field, 'foo@bar.org')
         self.assertEqual(dummy.default_slug_field, 'a-slug')
