@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
-
-__doc__ = """
+"""
 Generators are callables that return a value used to populate a field.
 
 If this callable has a `required` attribute (a list, mostly), for each item in
@@ -12,16 +11,20 @@ and value is the value for that argument.
 """
 
 import string
-import datetime
 from decimal import Decimal
-from random import randint, choice, random
-
-from django.contrib.contenttypes.models import ContentType
-from django.db.models import get_models
-from django.core.files import File
-
-import os
 from os.path import abspath, join, dirname
+from random import randint, choice, random
+from django import VERSION
+from django.core.files.base import ContentFile
+import six
+
+from model_mommy.timezone import now
+
+# Map unicode to str in Python 2.x since bytes can be used
+try:
+    str = unicode
+except NameError:
+    pass
 
 
 MAX_LENGTH = 300
@@ -29,12 +32,24 @@ MAX_LENGTH = 300
 # Postgres database.
 MAX_INT = 10000
 
-STRING_OPTIONS = string.letters + string.digits + "_-"
+def get_content_file(content, name):
+    if VERSION < (1, 4):
+        return ContentFile(content)
+    else:
+        return ContentFile(content, name=name)
 
 def gen_file_field():
-    file_path = abspath(join(dirname(__file__),'mock_file.txt'))
-    fixture_txt_file = File(open(file_path))
-    return fixture_txt_file
+    name = 'mock_file.txt'
+    file_path = abspath(join(dirname(__file__), name))
+    with open(file_path, 'rb') as f:
+        return get_content_file(f.read(), name=name)
+
+def gen_image_field():
+    name = 'mock-img.jpeg'
+    file_path = abspath(join(dirname(__file__), name))
+    with open(file_path, 'rb') as f:
+        return get_content_file(f.read(), name=name)
+
 
 def gen_from_list(L):
     '''Makes sure all values of the field are generated from the list L
@@ -43,13 +58,19 @@ def gen_from_list(L):
     class KidMommy(Mommy):
       attr_mapping = {'some_field':gen_from_list([A, B, C])}
     '''
-    return lambda: choice(L)
+    return lambda: choice(list(L))
 
 # -- DEFAULT GENERATORS --
 
 
 def gen_from_choices(C):
-    choice_list = map(lambda x: x[0], C)
+    choice_list = []
+    for value, label in C:
+        if isinstance(label, (list, tuple)):
+            for val, lbl in label:
+                choice_list.append(val)
+        else:
+            choice_list.append(value)
     return gen_from_list(choice_list)
 
 
@@ -63,26 +84,32 @@ def gen_float():
 
 def gen_decimal(max_digits, decimal_places):
     num_as_str = lambda x: ''.join([str(randint(0, 9)) for i in range(x)])
-    return Decimal("%s.%s" % (num_as_str(max_digits - decimal_places),
+    return Decimal("%s.%s" % (num_as_str(max_digits - decimal_places - 1),
                               num_as_str(decimal_places)))
 gen_decimal.required = ['max_digits', 'decimal_places']
 
-gen_date = datetime.date.today
 
-gen_datetime = datetime.datetime.now
+def gen_date():
+    return now().date()
+
+
+def gen_datetime():
+    return now()
 
 
 def gen_time():
-    return datetime.datetime.now().time()
+    return now().time()
 
 
 def gen_string(max_length):
-    return ''.join(choice(STRING_OPTIONS) for i in range(max_length))
+    return str(''.join(choice(string.ascii_letters) for i in range(max_length)))
 gen_string.required = ['max_length']
 
 
-def gen_slug(max_length=50):
-    return ''.join(choice(STRING_OPTIONS) for i in range(max_length))
+def gen_slug(max_length):
+    valid_chars = string.ascii_letters + string.digits + '_-'
+    return str(''.join(choice(valid_chars) for i in range(max_length)))
+gen_slug.required = ['max_length']
 
 
 def gen_text():
@@ -94,12 +121,47 @@ def gen_boolean():
 
 
 def gen_url():
-    return 'http://www.%s.com' % gen_string(30)
+    return str('http://www.%s.com/' % gen_string(30))
 
 
 def gen_email():
     return "%s@example.com" % gen_string(10)
 
 
+def gen_ipv6():
+    return ":".join(format(randint(1, 65535), 'x') for i in range(8))
+
+
+def gen_ipv4():
+    return ".".join(str(randint(1, 255)) for i in range(4))
+
+
+def gen_ipv46():
+    ip_gen = choice([gen_ipv4, gen_ipv6])
+    return ip_gen()
+
+
+def gen_byte_string(max_length=16):
+    generator = (randint(0, 255) for x in range(max_length))
+    if six.PY2:
+        return "".join(map(chr, generator))
+    elif six.PY3:
+        return bytes(generator)
+
+def gen_interval(interval_key='milliseconds'):
+    from datetime import timedelta
+    interval = gen_integer()
+    kwargs = {interval_key: interval}
+    return timedelta(**kwargs)
+
 def gen_content_type():
+    from django.contrib.contenttypes.models import ContentType
+    try:
+        # for >= 1.7
+        from django.apps import apps
+        get_models = apps.get_models
+    except ImportError:
+        # Deprecated
+        from django.db.models import get_models
+
     return ContentType.objects.get_for_model(choice(get_models()))

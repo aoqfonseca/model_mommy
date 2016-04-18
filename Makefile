@@ -5,3 +5,8 @@ help:
 test:
 	@python runtests.py
 
+.PHONY: test
+
+setup:
+	@pip install -r dev_requirements.txt
+
